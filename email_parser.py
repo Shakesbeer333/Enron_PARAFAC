@@ -4,6 +4,7 @@ import re
 import pickle
 from dateutil import parser
 from email.parser import Parser
+from configparser import ConfigParser
 
 with open(file= os.path.join(os.getcwd(), 'employees.txt'), encoding="utf-8", mode="r") as f:
     employee_txt = f.readlines()
@@ -21,10 +22,11 @@ f.close()
 # Email Parsing
 #
 #
-#email_path = os.path.join(os.getcwd(), "maildir")
-## Testing path
-#
-email_path = os.path.join(os.getcwd(), 'subfolder_email')
+parser = ConfigParser()
+parser.read('dev.ini')
+dir_ = parser.get('Parsing', 'dir_', fallback = 'maildir')
+
+email_path = os.path.join(os.getcwd(), dir_)
 
 email_list = []
 # r=root, d=directories, f = files
@@ -92,11 +94,11 @@ for index, p in enumerate(email_list):
 
         # Path
         #
-        # df.at[index, "Path"] = p.split('maildir')[1]
-        df.at[index, "Path"] = p.split('subfolder_email')[1]
+        df.at[index, "Path"] = p.split('dir_')[1]
+        # df.at[index, "Path"] = p.split('subfolder_email')[1]
 
 df.dropna(axis = 0, inplace = True)
 df.reset_index(drop = True, inplace = True)
 
-#pickle.dump(df, open(email_path + "/Data_Pickle/e_mails.p", "wb"))
+pickle.dump(df, open(email_path + "/Data_Pickle/e_mails.p", "wb"))
 
