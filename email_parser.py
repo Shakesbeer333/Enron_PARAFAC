@@ -3,7 +3,7 @@ import pandas as pd
 import re
 import pickle
 from dateutil import parser
-
+from email.parser import Parser
 
 with open(file= os.path.join(os.getcwd(), 'employees.txt'), encoding="utf-8", mode="r") as f:
     employee_txt = f.readlines()
@@ -21,7 +21,7 @@ f.close()
 # Email Parsing
 #
 #
-#path = os.path.join(os.getcwd(), "maildir")
+#email_path = os.path.join(os.getcwd(), "maildir")
 ## Testing path
 #
 email_path = os.path.join(os.getcwd(), 'subfolder_email')
@@ -39,25 +39,20 @@ for r, d, f in os.walk(email_path):
 df = pd.DataFrame(
     columns=["ID", "Date", "From", "Content", "Path"])
 
-for index, f in enumerate(email_list):
+for index, p in enumerate(email_list):
 
-    try:
-        t = open(file=f, encoding="utf-8", mode="r").read()
-    except UnicodeDecodeError:
-        print(f)
-        # t = open(file = f, encoding="utf-16", mode="r").read()
+    with open(p, 'r') as f:
 
-    # From
+        data = f.read()
+        email = Parser().parsestr(data)
 
-    match_start = re.search("From: ", t)
-    match_end = re.search("From: .*", t)
+        # Message ID
+        #
+        df.at[index, "ID"] = email['message-id']
 
-    if match_start and match_end:
-
-        # Option 1: Consider just within-Enron communication --> @enron
-        # Option 2: Consider entire communication
-
-        user_email = t[match_start.end(): match_end.end()]
+        # From
+        #
+        user_email = email['from']
 
         user_name_start = re.search('@', user_email)
 
@@ -75,44 +70,33 @@ for index, f in enumerate(email_list):
         else:
             print('No valid E-Mail')
 
-    # Message ID
 
-    match_start = re.search("Message-ID: <", t)
-    match_end = re.search("Message-ID: .*>", t)
-
-    if match_start and match_end:
-        df.at[index, "ID"] = t[match_start.end(): match_end.end() - 1]
-
-
-    # Date
-
-    match_start = re.search("Date: ", t)
-    match_end = re.search("Date: .*", t)
-
-    if match_start and match_end:
-        date = t[match_start.end(): match_end.end()]
+        # Date
+        #
+        date = email['date']
         date_time_obj = parser.parse(date)
 
         if date_time_obj.year == 2001:
             df.at[index, "Date"] = date
         else:
-            df.drop([index], inplace = True)
+            df.drop([index], inplace=True)
             continue
 
-    # Content
+        # Content
+        #
+        df.at[index, "Content"] = email.get_payload()
 
-    match_start = re.search("X-FileName: .*", t)
-
-    if match_start and match_end:
-        df.at[index, "Content"] = t[match_start.end():]
-
-    # Path
-
-    #df.at[index, "Path"] = f.split('maildir')[1]
-    df.at[index, "Path"] = f.split('subfolder_email')[1]
+        print(email.get_payload())
+        print('-----------------------------------------------------------------')
 
 
+        # Path
+        #
+        # df.at[index, "Path"] = p.split('maildir')[1]
+        df.at[index, "Path"] = p.split('subfolder_email')[1]
 
-pickle.dump(df, open(email_path + "/Data_Pickle/e_mails.p", "wb"))
+df.dropna(axis = 0, inplace = True)
+df.reset_index(drop = True, inplace = True)
 
-print(df)
+#pickle.dump(df, open(email_path + "/Data_Pickle/e_mails.p", "wb"))
+
