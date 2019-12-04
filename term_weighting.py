@@ -6,12 +6,10 @@ from nltk.corpus import stopwords
 from nltk.stem.wordnet import WordNetLemmatizer
 import string
 from nltk.stem.porter import PorterStemmer
-import pickle
 from configparser import ConfigParser
 import os
 import pandas as pd
 import re
-from dateutil import parser as d_parser
 
 parser = ConfigParser()
 parser.read('dev.ini')
@@ -85,5 +83,4 @@ df['Group_Key'] = df.apply(lambda x: str(x['From']) + '-' + str(x['Date'].year) 
 
 df_grouped = df.groupby('Group_Key').agg({'Token': 'sum'})
 
-
-print(df)
+print(df_grouped)
