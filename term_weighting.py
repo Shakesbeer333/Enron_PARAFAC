@@ -11,7 +11,7 @@ from configparser import ConfigParser
 import os
 import pandas as pd
 import re
-
+from dateutil import parser as d_parser
 
 parser = ConfigParser()
 parser.read('dev.ini')
@@ -28,7 +28,8 @@ lemma = WordNetLemmatizer()
 porter = PorterStemmer()
 
 stop = set(stopwords.words('english'))
-stop.update(("to","cc:","subject:","http","from:","sent:", "ect", "u", "fwd", "www", "com", 'message-----', '-----origin'))
+#todo write additional stopwors in txt file
+stop.update(("to","cc:","subject:", r'http\S*',"from:","sent:", "ect", "u", "fwd", "www", "com", 'message-----', '-----origin'))
 
 exclude = set(string.punctuation)
 
@@ -69,7 +70,7 @@ def token(text):
 
     return cleaned_text
 
-df['Cleaned_Text'] = df.apply(lambda x: token(x['Content']), axis = 1)
+df['Token'] = df.apply(lambda x: token(x['Content']), axis = 1)
 
 
 def weight(tokens):
@@ -79,6 +80,10 @@ def weight(tokens):
     #author_normalization =
     pass
 
+
+df['Group_Key'] = df.apply(lambda x: str(x['From']) + '-' + str(x['Date'].year) + '-' + str(x['Date'].month), axis = 1)
+
+df_grouped = df.groupby('Group_Key').agg({'Token': 'sum'})
 
 
 print(df)
