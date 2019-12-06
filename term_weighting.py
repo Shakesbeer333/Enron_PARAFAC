@@ -25,9 +25,22 @@ df = pd.read_pickle(e_mails)
 lemma = WordNetLemmatizer()
 porter = PorterStemmer()
 
-stop = set(stopwords.words('english'))
+stop = stopwords.words('english')
 #todo write additional stopwors in txt file
-stop.update(("to","cc:","subject:", r'http\S*',"from:","sent:", "ect", "u", "fwd", "www", "com", 'message-----', '-----origin'))
+add_regular = [r'To:',"cc:",r'Subject:', r'http\S*',r'From:',r'Sent:', "ect", "u", "fwd", "www", "com"]
+add_dotall = ['-+ Forwarded.*\n.*-+\n',
+              '-+Original Message-+.*\nFrom:.*\nSent:.*\nTo:.*\nSubject:.*\n',
+              'http\S+',
+              'www\S+',
+              '.*on \d\d/\d\d/\d\d\d\d \d\d:\d\d:\d\d (AM|PM)?',
+              '\S+@\S+',
+              'To:.*(\n.*)+Subject:',
+              ]
+
+pattern = r'|'.join(add_dotall)
+
+
+
 
 exclude = set(string.punctuation)
 
@@ -41,13 +54,18 @@ str_ += ']'
 
 def token(text):
 
+    text = re.sub(pattern = pattern, repl = '', string = text, count = 100, flags = re.IGNORECASE)
+
+    print(text)
+    print('-------------NEW MAIL---------------------------------------')
+
     text = text.rstrip().lower().split()
 
     # 1 - remove punctuation
     punc_free = [i for i in text if i not in exclude]
 
-    # 2 - Remove all stopwords
-    stop_free = [i for i in punc_free if ((i not in stop) and (not i.isdigit()))]
+    # 2 - Remove all digits and stopwords
+    stop_free = [i for i in punc_free if (not i.isdigit()) and (i not in stop)]
 
     # 3 - Lemmatize words
     normalized = [lemma.lemmatize(i) for i in stop_free]
@@ -61,7 +79,7 @@ def token(text):
     cleaned_text = [re.sub(str_, '', i) for i in stemmed]
 
     # remove stopwords after lemmatizing and stemming
-    cleaned_text = [i for i in cleaned_text if ((i not in stop))]
+    #cleaned_text = [i for i in cleaned_text if ((i not in stop))]
 
     # remove digits after lemmatizing and stemming
     cleaned_text = [i for i in cleaned_text if not i.isdigit()]
@@ -73,10 +91,10 @@ df['Token'] = df.apply(lambda x: token(x['Content']), axis = 1)
 
 def weight(tokens):
 
+    #l = dict(nltk.FreqDist(n)
     #loc_local_weight =
     #entropy_global_weight =
     #author_normalization =
-    pass
 
 
 df['Group_Key'] = df.apply(lambda x: str(x['From']) + '-' + str(x['Date'].year) + '-' + str(x['Date'].month), axis = 1)
@@ -84,3 +102,5 @@ df['Group_Key'] = df.apply(lambda x: str(x['From']) + '-' + str(x['Date'].year) 
 df_grouped = df.groupby('Group_Key').agg({'Token': 'sum'})
 
 print(df_grouped)
+
+df_grouped['Count'] = df_grouped.apply(lambda x: weight(x['Token']), axis = 1)
