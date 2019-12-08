@@ -9,6 +9,7 @@ from nltk.stem.porter import PorterStemmer
 from configparser import ConfigParser
 import os
 import pandas as pd
+pd.set_option('display.max_columns', 10)
 import re
 import numpy as np
 from collections import Counter
@@ -90,7 +91,7 @@ def token(text):
 
 df['Token'] = df.apply(lambda x: token(x['Content']), axis = 1)
 
-
+# Plausibility Check okay
 def loc_local_weight(tokens):
 
     l = dict(nltk.FreqDist(tokens))
@@ -98,36 +99,47 @@ def loc_local_weight(tokens):
 
     return Counter(l)
 
-def h_i_j(tokens):
-
-    denominator = len(tokens)
-    h = dict(nltk.FreqDist(tokens))
-    h.update((x, y/denominator) for x,y in h.items())
-
-    return Counter(h)
 
 token_list = [item for sublist in df.agg({'Token': 'sum'}).values for item in sublist]
-entropy_dict = dict(zip(token_list, [0]*len(token_list)))
+token_dict = dict(nltk.FreqDist(token_list))
 
-def entropy_global_weight(h_i_j):
+# Plausibility check okay
+def h_i_j(tokens):
 
-    entropy_dict.update((x, (y*np.log(y))/len(entropy_dict) + z) for x,y in h_i_j.items() for x,z in entropy_dict.items())
+    h = dict(nltk.FreqDist(tokens))
+    h.update((x, y/token_dict[x]) for x,y in h.items())
+
+    return Counter(h)
 
 
 author_list = df['From'].values
 author_dict = dict(zip(author_list, [0]*len(author_list)))
 
-token_dict = dict(zip(token_list, [0]*len(token_list)))
+entropy_dict = dict(zip(token_list, [0]*len(token_list)))
 
-#todo
+# Plausibility check okay
+def entropy_global_weight(h_i_j):
+
+    entropy_copy = entropy_dict.copy()
+    entropy_dict.update((x, (h_i_j[x]*np.log(h_i_j[x]))/len(author_dict) + entropy_copy[x]) for x in h_i_j)
+
+# Plausibility check okay
 def author_normalization(loc_log_weight, author):
 
-    g = author_dict[author]
+    author_dict[author] = sum(loc_log_weight[x]*entropy_dict[x] for x in loc_log_weight)
 
-    token_dict.update((x, y + l*g) for x, y in token_dict.items() for x, l in loc_log_weight.items())
+# Plausibility check okay
+def final_weight(l_i_j, author):
+
+    x_i_j = dict(l_i_j.copy())
+
+    x_i_j.update((x, y*entropy_dict[x]*author_dict[author]) for x, y in x_i_j.items())
+
+    return x_i_j
 
 
 # Local loc weight
+#
 
 df['Group_Key_l'] = df.apply(lambda x: str(x['From']) + '-' + str(x['Date'].year) + '-' + str(x['Date'].month), axis = 1)
 
@@ -137,21 +149,33 @@ df_grouped_l['Loc_local_weight'] = df_grouped_l.apply(lambda x: loc_local_weight
 
 
 # Entropy global weight
+#
 
 df_grouped_h = df.groupby('From').agg({'Token': 'sum'})
 
 df_grouped_h['h_i_j'] = df_grouped_h.apply(lambda x: h_i_j(x['Token']), axis = 1)
 
+del token_dict
+
 df_grouped_h.apply(lambda x: entropy_global_weight(x['h_i_j']), axis = 1)
 
-#todo
+entropy_dict.update((x, 1 + y) for x,y in entropy_dict.items())
+
 # Author normalization
+#
 
 df_grouped_l.reset_index(inplace = True)
-df_grouped_l['Author'] = df_grouped_l.apply(lambda x: x['Group_Key_l'][ : re.search(r'-\d\d\d\d-', x['Group_Key_l']).start()], axis = 1) #re.match('d', x['Group_Key_l']
+df_grouped_l['Author'] = df_grouped_l.apply(lambda x: x['Group_Key_l'][ : re.search(r'-\d\d\d\d-', x['Group_Key_l']).start()], axis = 1)
 
-df_grouped_l.apply(lambda x: author_normalization(x['Loc_local_weight'], x['Author']), axis = 1)
+df_grouped_a = df_grouped_l.groupby('Author').agg({'Loc_local_weight': 'sum'})
 
+df_grouped_a.reset_index(inplace = True)
 
+df_grouped_a.apply(lambda x: author_normalization(x['Loc_local_weight'], x['Author']), axis = 1)
 
+author_dict.update((x,(np.sqrt(y))**-1) for x,y in author_dict.items())
 
+# Final weighting
+#
+
+df_grouped_l['Final_Weight'] = df_grouped_l.apply(lambda x: final_weight(x['Loc_local_weight'].copy(), x['Author']), axis = 1)
