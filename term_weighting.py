@@ -235,3 +235,6 @@ tensor = np.asarray(df['Numbers'].values)
 tensor = np.asarray([np.asarray(n) for n in tensor])
 
 tensor = np.reshape(tensor, (len(author_dict), (years_end - year_start)*12, len(token_dict)))
+
+np.save('tensor', tensor)
+
