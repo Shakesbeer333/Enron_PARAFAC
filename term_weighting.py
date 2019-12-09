@@ -1,7 +1,6 @@
 import nltk
 nltk.download('stopwords')
 nltk.download('wordnet')
-from nltk.tokenize.regexp import RegexpTokenizer
 from nltk.corpus import stopwords
 from nltk.stem.wordnet import WordNetLemmatizer
 import string
@@ -80,12 +79,15 @@ def token(text):
 
     # wow! --> wow     or       "include --> include
     cleaned_text = [re.sub(str_, '', i) for i in stemmed]
+    cleaned_text = [i for i in cleaned_text if not i == '']
 
     # remove stopwords after lemmatizing and stemming
     #cleaned_text = [i for i in cleaned_text if ((i not in stop))]
 
     # remove digits after lemmatizing and stemming
     cleaned_text = [i for i in cleaned_text if not i.isdigit()]
+
+    cleaned_text.sort()
 
     return cleaned_text
 
@@ -101,6 +103,7 @@ def loc_local_weight(tokens):
 
 
 token_list = [item for sublist in df.agg({'Token': 'sum'}).values for item in sublist]
+token_list.sort()
 token_dict = dict(nltk.FreqDist(token_list))
 
 # Plausibility check okay
@@ -113,6 +116,7 @@ def h_i_j(tokens):
 
 
 author_list = df['From'].values
+author_list.sort()
 author_dict = dict(zip(author_list, [0]*len(author_list)))
 
 entropy_dict = dict(zip(token_list, [0]*len(token_list)))
@@ -135,7 +139,7 @@ def final_weight(l_i_j, author):
 
     x_i_j.update((x, y*entropy_dict[x]*author_dict[author]) for x, y in x_i_j.items())
 
-    return x_i_j
+    return Counter(x_i_j)
 
 
 # Local loc weight
@@ -166,6 +170,7 @@ entropy_dict.update((x, 1 + y) for x,y in entropy_dict.items())
 
 df_grouped_l.reset_index(inplace = True)
 df_grouped_l['Author'] = df_grouped_l.apply(lambda x: x['Group_Key_l'][ : re.search(r'-\d\d\d\d-', x['Group_Key_l']).start()], axis = 1)
+df_grouped_l['Date'] = df_grouped_l.apply(lambda x: x['Group_Key_l'][re.search(r'-\d\d\d\d-', x['Group_Key_l']).start()+1: ], axis = 1)
 
 df_grouped_a = df_grouped_l.groupby('Author').agg({'Loc_local_weight': 'sum'})
 
@@ -179,3 +184,54 @@ author_dict.update((x,(np.sqrt(y))**-1) for x,y in author_dict.items())
 #
 
 df_grouped_l['Final_Weight'] = df_grouped_l.apply(lambda x: final_weight(x['Loc_local_weight'].copy(), x['Author']), axis = 1)
+
+
+
+df = df_grouped_l[['Group_Key_l', 'Final_Weight', 'Date', 'Author']]
+
+token_dict = Counter(dict(zip(token_list, [0]*len(token_list))))
+df.apply(lambda x: x['Final_Weight'].update(token_dict), axis = 1)
+
+df['Sorted_Tokens'] = df.apply(lambda x: sorted(x['Final_Weight'].copy().items()), axis = 1).values
+
+
+def array(sorted_tokens):
+
+    sorted_tokens = [x[1] for x in sorted_tokens]
+
+    return sorted_tokens
+
+
+df['Numbers'] = df.apply(lambda x: array(x['Sorted_Tokens']), axis = 1)
+df = df[['Group_Key_l', 'Numbers']]
+
+
+year_start = parser.getint('Parsing', 'year_start')
+years_end = parser.getint('Parsing', 'year_end') +1
+
+dates = [str(x)+'-'+str(y) for x in range(year_start, years_end) for y in range(1,13)]
+
+keys = [x+'-'+y for x in author_list for y in dates]
+
+null_ = [0]*len(token_dict)
+for x in keys:
+    if x not in df['Group_Key_l'].values:
+        df.at[x, 'Numbers'] = null_
+        df.at[x, 'Group_Key_l'] = x
+
+
+df['Author'] = df.apply(lambda x: x['Group_Key_l'][ : re.search(r'-\d\d\d\d-', x['Group_Key_l']).start()],axis = 1)
+df['Year'] = df.apply(lambda x: int(x['Group_Key_l'][re.search(r'-\d\d\d\d-', x['Group_Key_l']).start() + 1 :  re.search(r'-\d\d\d\d-', x['Group_Key_l']).end() - 1]),axis = 1)
+df['Month'] = df.apply(lambda x: int(x['Group_Key_l'][re.search(r'-\d\d\d\d-', x['Group_Key_l']).end(): ]),axis = 1)
+
+
+
+df.sort_values(['Author', 'Year', 'Month'], inplace = True)
+
+df = df[['Group_Key_l', 'Numbers']]
+df.reset_index(inplace = True, drop = True)
+
+tensor = np.asarray(df['Numbers'].values)
+tensor = np.asarray([np.asarray(n) for n in tensor])
+
+tensor = np.reshape(tensor, (len(author_dict), (years_end - year_start)*12, len(token_dict)))
