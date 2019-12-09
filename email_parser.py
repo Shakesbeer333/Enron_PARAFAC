@@ -39,7 +39,7 @@ for r, d, f in os.walk(email_path):
             email_list.append(os.path.join(r, file))
 
 df = pd.DataFrame(
-    columns=["ID", "Date", "From", "Content", "Path"])
+    columns=["ID", "Date", "From", "Subject", "Content", "Path"])
 
 for index, p in enumerate(email_list):
 
@@ -83,6 +83,10 @@ for index, p in enumerate(email_list):
         else:
             df.drop([index], inplace=True)
             continue
+
+        # Subject
+        #
+        df.at[index, "Subject"] = email['subject']
 
         # Content
         #
