@@ -12,12 +12,15 @@ pd.set_option('display.max_columns', 10)
 import re
 import numpy as np
 from collections import Counter
+import pickle
 
 parser = ConfigParser()
 parser.read('dev.ini')
 dir_ = parser.get('Parsing', 'dir_', fallback = 'maildir')
 
-e_mails = os.path.join(os.getcwd(), os.path.join(dir_, 'Data_Pickle/e_mails.p',))
+email_path = os.path.join(os.getcwd(), dir_)
+
+e_mails = os.path.join(email_path +  '/Data_Pickle/e_mails.p')
 
 df = pd.read_pickle(e_mails)
 
@@ -31,7 +34,7 @@ stop = stopwords.words('english')
 #todo write additional stopwors in txt file
 add_regular = [r'To:',"cc:",r'Subject:', r'http\S*',r'From:',r'Sent:', "ect", "u", "fwd", "www", "com"]
 add_dotall = ['-+ Forwarded.*\n.*-+\n',
-              '-+Original Message-+.*\nFrom:.*\nSent:.*\nTo:.*\nSubject:.*\n',
+              '-+Original Message-+.*\nFrom:.*\nSent:.*\nTo:.*\nSubject:(.*\n)*\n\s+\n',
               'http\S+',
               'www\S+',
               '.*on \d\d/\d\d/\d\d\d\d \d\d:\d\d:\d\d (AM|PM)?',
@@ -54,12 +57,17 @@ str_ += ']'
 #
 #############################################################################
 
-def token(text):
+def token(text, subject):
 
-    text = re.sub(pattern = pattern, repl = '', string = text, count = 100, flags = re.IGNORECASE)
+    text = re.sub(pattern = pattern, repl = '', string = text, count = 10000, flags = re.IGNORECASE)
+    text = re.sub(r'\s*(\d+)\s*', r' \1 ', text, 10000)
+    #subject = re.sub(pattern='\n', repl='', string=subject, count=100)
+    #text = re.sub(pattern='\n', repl='', string=text, count=10000)
+    #text = re.sub(pattern=subject, repl='', string=text, count=100)
 
-    #print(text)
-    #print('-------------NEW MAIL---------------------------------------')
+
+    print(text)
+    print('-------------NEW MAIL---------------------------------------')
 
     text = text.rstrip().lower().split()
 
@@ -91,7 +99,7 @@ def token(text):
 
     return cleaned_text
 
-df['Token'] = df.apply(lambda x: token(x['Content']), axis = 1)
+df['Token'] = df.apply(lambda x: token(x['Content'], x['Subject'] ), axis = 1)
 
 # Plausibility Check okay
 def loc_local_weight(tokens):
@@ -237,4 +245,9 @@ tensor = np.asarray([np.asarray(n) for n in tensor])
 tensor = np.reshape(tensor, (len(author_dict), (years_end - year_start)*12, len(token_dict)))
 
 np.save('tensor', tensor)
+
+pickle.dump(token_dict, open(email_path + "/Data_Pickle/token_dict.p", "wb"))
+pickle.dump(dates, open(email_path + "/Data_Pickle/dates.p", "wb"))
+
+
 
