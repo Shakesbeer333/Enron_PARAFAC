@@ -1,5 +1,6 @@
 import os
 import pandas as pd
+pd.set_option('display.max_columns', 6)
 import re
 import pickle
 from dateutil import parser
@@ -43,40 +44,41 @@ df = pd.DataFrame(
 
 for index, p in enumerate(email_list):
 
-    with open(p, 'r') as f:
+    with open(p, 'r', encoding= 'UTF-8', errors = 'ignore') as f:
 
         data = f.read()
-        email = Parser().parsestr(data)
 
-        # Message ID
-        #
-        df.at[index, "ID"] = email['message-id']
+    email = Parser().parsestr(data)
 
-        # From
-        #
-        user_email = email['from']
+    # Message ID
+    #
+    df.at[index, "ID"] = email['message-id']
 
-        user_name_start = re.search('@', user_email)
+    # From
+    #
+    user_email = email['from']
 
-        if user_name_start:
+    user_name_start = re.search('@', user_email)
 
-            user_name = user_email[0: user_name_start.start()]
+    if user_name_start:
 
-            # Only consider important employees
-            if user_name in employee_list:
-                df.at[index, "From"] = user_name
-                pass
-            else:
-                continue
+        user_name = user_email[0: user_name_start.start()]
 
+        # Only consider important employees
+        if user_name in employee_list:
+            df.at[index, "From"] = user_name
+            pass
         else:
-            print('No valid E-Mail')
+            continue
+
+    else:
+        print('No valid E-Mail')
 
 
-        # Date
-        #
-        date = email['date']
-        date_time_obj = parser.parse(date)
+    # Date
+    #
+    date = email['date']
+    date_time_obj = d_parser.parse(date)
 
         if date_time_obj.year == 2001:
             df.at[index, "Date"] = date
@@ -84,22 +86,21 @@ for index, p in enumerate(email_list):
             df.drop([index], inplace=True)
             continue
 
-        # Subject
-        #
-        df.at[index, "Subject"] = email['subject']
+    # Subject
+    #
+    df.at[index, "Subject"] = email['subject']
 
-        # Content
-        #
-        df.at[index, "Content"] = email.get_payload()
+    # Content
+    #
+    df.at[index, "Content"] = email.get_payload()
 
         print(email.get_payload())
         print('-----------------------------------------------------------------')
 
 
-        # Path
-        #
-        df.at[index, "Path"] = p.split('dir_')[1]
-        # df.at[index, "Path"] = p.split('subfolder_email')[1]
+    # Path
+    #
+    df.at[index, "Path"] = p.split(dir_)[1]
 
 df.dropna(axis = 0, inplace = True)
 df.reset_index(drop = True, inplace = True)
