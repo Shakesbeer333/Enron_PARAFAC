@@ -14,6 +14,10 @@ import numpy as np
 from collections import Counter
 import pickle
 
+import warnings
+
+warnings.filterwarnings("ignore")
+
 parser = ConfigParser()
 parser.read('dev.ini')
 dir_ = parser.get('Parsing', 'dir_', fallback = 'maildir')
@@ -31,18 +35,29 @@ lemma = WordNetLemmatizer()
 porter = PorterStemmer()
 
 stop = stopwords.words('english')
-#todo write additional stopwors in txt file
-add_regular = [r'To:',"cc:",r'Subject:', r'http\S*',r'From:',r'Sent:', "ect", "u", "fwd", "www", "com"]
-add_dotall = ['-+ Forwarded.*\n.*-+\n',
-              '-+Original Message-+.*\nFrom:.*\nSent:.*\nTo:.*\nSubject:(.*\n)*\n\s+\n',
-              'http\S+',
-              'www\S+',
-              '.*on \d\d/\d\d/\d\d\d\d \d\d:\d\d:\d\d (AM|PM)?',
-              '\S+@\S+',
-              'To:.*(\n.*)+Subject:',
-              ]
+# todo write additional stopwors in txt file
 
-pattern = r'|'.join(add_dotall)
+regex = ['-+ Forwarded.*\n.*-+\n',
+         '-+Original Message-+.*\nFrom:.*\nSent:.*\nTo:.*\nSubject:.*\n.*\n+',
+         'http\S+',
+         'www\S+',
+         '.*on \d\d/\d\d/\d\d\d\d \d\d:\d\d:\d\d (AM|PM)?',
+         '\S+@\S+',
+         'To:.*(\n.*)+Subject:.*\n.*\n+',
+         'To:.*\n',
+         'cc:.*\n',
+         'From:.*\n',
+         'bcc:.*\n',
+         'Subject:.+\n',
+         'FYI',
+         'fwd',
+         '\b.*\.com',
+         'ect',
+         '\bu\b',
+         '\w*\.\w{2,3}'  # File formats
+         ]
+
+pattern = r'|'.join(regex)
 
 
 
