@@ -116,11 +116,12 @@ df['Token'] = df.apply(lambda x: [item for item in x['Token'] if item in token_d
 all_emails_token_list = [df.ix[i, 'Token'] for i in range(len(df))]
 
 for index, email in enumerate(all_emails_token_list):
-
     sub = all_emails_token_list[:index] + all_emails_token_list[(index + 1):]
     sub = [item for sublist in sub for item in sublist]
-
+    # Update token list in df
     df.at[index, 'Token'] = [token for token in email if token in sub]
+    # Update global token dict
+    [token_dict.pop(token, None) for token in email if token not in sub]
 
 
 # Plausibility Check okay
@@ -144,7 +145,7 @@ author_list = df['From'].values
 author_list.sort()
 author_dict = dict(zip(author_list, [0]*len(author_list)))
 
-entropy_dict = dict(zip(token_list, [0]*len(token_list)))
+entropy_dict = dict.fromkeys(token_dict, 0)
 
 # Plausibility check okay
 def entropy_global_weight(h_i_j):
@@ -184,8 +185,6 @@ df_grouped_h = df.groupby('From').agg({'Token': 'sum'})
 
 df_grouped_h['h_i_j'] = df_grouped_h.apply(lambda x: h_i_j(x['Token']), axis = 1)
 
-del token_dict
-
 df_grouped_h.apply(lambda x: entropy_global_weight(x['h_i_j']), axis = 1)
 
 entropy_dict.update((x, 1 + y) for x,y in entropy_dict.items())
@@ -214,7 +213,7 @@ df_grouped_l['Final_Weight'] = df_grouped_l.apply(lambda x: final_weight(x['Loc_
 
 df = df_grouped_l[['Group_Key_l', 'Final_Weight', 'Date', 'Author']]
 
-token_dict = Counter(dict(zip(token_list, [0]*len(token_list))))
+token_dict = Counter(dict.fromkeys(token_dict, 0))
 df.apply(lambda x: x['Final_Weight'].update(token_dict), axis = 1)
 
 df['Sorted_Tokens'] = df.apply(lambda x: sorted(x['Final_Weight'].copy().items()), axis = 1).values
