@@ -59,15 +59,14 @@ str_ += ']'
 
 def token(text, subject):
 
-    text = re.sub(pattern = pattern, repl = '', string = text, count = 10000, flags = re.IGNORECASE)
+    text = re.sub(pattern=pattern, repl='', string=text, count=10000, flags=re.IGNORECASE)
     text = re.sub(r'\s*(\d+)\s*', r' \1 ', text, 10000)
-    #subject = re.sub(pattern='\n', repl='', string=subject, count=100)
-    #text = re.sub(pattern='\n', repl='', string=text, count=10000)
-    #text = re.sub(pattern=subject, repl='', string=text, count=100)
+    # subject = re.sub(pattern='\n', repl='', string=subject, count=100)
+    # text = re.sub(pattern='\n', repl='', string=text, count=10000)
+    # text = re.sub(pattern=subject, repl='', string=text, count=100)
 
-
-    print(text)
-    print('-------------NEW MAIL---------------------------------------')
+    # print(text)
+    # print('-------------NEW MAIL---------------------------------------')
 
     text = text.rstrip().lower().split()
 
@@ -99,20 +98,42 @@ def token(text, subject):
 
     return cleaned_text
 
-df['Token'] = df.apply(lambda x: token(x['Content'], x['Subject'] ), axis = 1)
 
-# Plausibility Check okay
-def loc_local_weight(tokens):
+# Create tokens
+df['Token'] = df.apply(lambda x: token(x['Content'], x['Subject']), axis=1)
 
-    l = dict(nltk.FreqDist(tokens))
-    l.update((x,np.log(1 + y)) for x,y in l.items())
-
-    return Counter(l)
-
-
+# Aggregation of all tokens
 token_list = [item for sublist in df.agg({'Token': 'sum'}).values for item in sublist]
 token_list.sort()
 token_dict = dict(nltk.FreqDist(token_list))
+
+# Token must appear more than 10 times
+token_dict = {k: v for k, v in token_dict.items() if token_list.count(k) >= 10}
+# Update token list in df
+df['Token'] = df.apply(lambda x: [item for item in x['Token'] if item in token_dict.keys()], axis=1)
+
+# Token must occur in more than one email
+all_emails_token_list = [df.ix[i, 'Token'] for i in range(len(df))]
+
+for index, email in enumerate(all_emails_token_list):
+
+    sub = all_emails_token_list[:index] + all_emails_token_list[(index + 1):]
+    sub = [item for sublist in sub for item in sublist]
+
+    for token in email.copy():
+        if not token in sub:
+            email.remove(token)
+
+    df.at[index, 'Token'] = email
+
+
+# Plausibility Check okay
+def loc_local_weight(tokens):
+    l = dict(nltk.FreqDist(tokens))
+    l.update((x, np.log(1 + y)) for x, y in l.items())
+
+    return Counter(l)
+
 
 # Plausibility check okay
 def h_i_j(tokens):
