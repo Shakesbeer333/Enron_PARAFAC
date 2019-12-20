@@ -3,11 +3,11 @@ import pandas as pd
 pd.set_option('display.max_columns', 6)
 import re
 import pickle
-from dateutil import parser
+from dateutil import parser as d_parser
 from email.parser import Parser
 from configparser import ConfigParser
 
-with open(file= os.path.join(os.getcwd(), 'employees.txt'), encoding="utf-8", mode="r") as f:
+with open(file=os.path.join(os.getcwd(), 'employees.txt'), encoding='utf-8', mode="r") as f:
     employee_txt = f.readlines()
 
 employee_list = []
@@ -66,25 +66,30 @@ for index, p in enumerate(email_list):
 
         # Only consider important employees
         if user_name in employee_list:
+
             df.at[index, "From"] = user_name
-            pass
+
         else:
+
+            df.drop([index], inplace=True)
             continue
 
     else:
-        print('No valid E-Mail')
 
+        print('No valid E-Mail: ', user_email)
+        df.drop([index], inplace=True)
+        continue
 
     # Date
     #
     date = email['date']
     date_time_obj = d_parser.parse(date)
 
-        if date_time_obj.year == 2001:
-            df.at[index, "Date"] = date
-        else:
-            df.drop([index], inplace=True)
-            continue
+    if date_time_obj.year == 2001:
+        df.at[index, "Date"] = date_time_obj
+    else:
+        df.drop([index], inplace=True)
+        continue
 
     # Subject
     #
@@ -94,16 +99,12 @@ for index, p in enumerate(email_list):
     #
     df.at[index, "Content"] = email.get_payload()
 
-        print(email.get_payload())
-        print('-----------------------------------------------------------------')
-
 
     # Path
     #
     df.at[index, "Path"] = p.split(dir_)[1]
 
-df.dropna(axis = 0, inplace = True)
+# df.dropna(axis = 0, inplace = True)
 df.reset_index(drop = True, inplace = True)
 
-pickle.dump(df, open(email_path + "/Data_Pickle/e_mails.p", "wb"))
-
+pickle.dump(df, open(email_path + "/Data_Pickle/e_mails.p", "wb")
