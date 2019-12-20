@@ -120,11 +120,7 @@ for index, email in enumerate(all_emails_token_list):
     sub = all_emails_token_list[:index] + all_emails_token_list[(index + 1):]
     sub = [item for sublist in sub for item in sublist]
 
-    for token in email.copy():
-        if not token in sub:
-            email.remove(token)
-
-    df.at[index, 'Token'] = email
+    df.at[index, 'Token'] = [token for token in email if token in sub]
 
 
 # Plausibility Check okay
