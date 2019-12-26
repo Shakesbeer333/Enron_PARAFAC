@@ -8,6 +8,7 @@ from nltk.stem.porter import PorterStemmer
 from configparser import ConfigParser
 import os
 import pandas as pd
+
 pd.set_option('display.max_columns', 10)
 import re
 import numpy as np
@@ -20,11 +21,11 @@ warnings.filterwarnings("ignore")
 
 parser = ConfigParser()
 parser.read('dev.ini')
-dir_ = parser.get('Parsing', 'dir_', fallback = 'maildir')
+dir_ = parser.get('Parsing', 'dir_', fallback='maildir')
 
 email_path = os.path.join(os.getcwd(), dir_)
 
-e_mails = os.path.join(email_path +  '/Data_Pickle/e_mails.p')
+e_mails = os.path.join(email_path + '/Data_Pickle/e_mails.p')
 
 df = pd.read_pickle(e_mails)
 
@@ -73,7 +74,6 @@ str_ += ']'
 #############################################################################
 
 def token(text, subject):
-
     text = re.sub(pattern=pattern, repl='', string=text, count=10000, flags=re.IGNORECASE)
     text = re.sub(r'\s*(\d+)\s*', r' \1 ', text, 10000)
     # subject = re.sub(pattern='\n', repl='', string=subject, count=100)
@@ -116,16 +116,19 @@ def token(text, subject):
 
 # Create tokens
 df['Token'] = df.apply(lambda x: token(x['Content'], x['Subject']), axis=1)
+print('Create tokens - done')
 
 # Aggregation of all tokens
 token_list = [item for sublist in df.agg({'Token': 'sum'}).values for item in sublist]
 token_list.sort()
 token_dict = dict(nltk.FreqDist(token_list))
+print('Aggregation of all tokens - done')
 
 # Token must appear more than 10 times
 token_dict = {k: v for k, v in token_dict.items() if token_list.count(k) >= 10}
 # Update token list in df
 df['Token'] = df.apply(lambda x: [item for item in x['Token'] if item in token_dict.keys()], axis=1)
+print('Token must appear more than 10 times - done')
 
 # Token must occur in more than one email
 all_emails_token_list = [df.ix[i, 'Token'] for i in range(len(df))]
@@ -137,6 +140,10 @@ for index, email in enumerate(all_emails_token_list):
     df.at[index, 'Token'] = [token for token in email if token in sub]
     # Update global token dict
     [token_dict.pop(token, None) for token in email if token not in sub]
+
+print('Token must occur in more than one email - done')
+
+pickle.dump(df, open(email_path + "/Data_Pickle/descriptive_stats.p", "wb"))
 
 
 # Plausibility Check okay
@@ -185,46 +192,37 @@ def final_weight(l_i_j, author):
 
 # Local loc weight
 #
-
 df['Group_Key_l'] = df.apply(lambda x: str(x['From']) + '-' + str(x['Date'].year) + '-' + str(x['Date'].month), axis = 1)
-
 df_grouped_l = df.groupby('Group_Key_l').agg({'Token': 'sum'})
-
 df_grouped_l['Loc_local_weight'] = df_grouped_l.apply(lambda x: loc_local_weight(x['Token']), axis = 1)
-
+print('Local loc weight - done')
 
 # Entropy global weight
 #
-
 df_grouped_h = df.groupby('From').agg({'Token': 'sum'})
-
 df_grouped_h['h_i_j'] = df_grouped_h.apply(lambda x: h_i_j(x['Token']), axis = 1)
-
 df_grouped_h.apply(lambda x: entropy_global_weight(x['h_i_j']), axis = 1)
-
-entropy_dict.update((x, 1 + y) for x,y in entropy_dict.items())
+entropy_dict.update((x, 1 + y) for x, y in entropy_dict.items())
+print('Entropy global weight - done')
 
 # Author normalization
 #
-
-df_grouped_l.reset_index(inplace = True)
-df_grouped_l['Author'] = df_grouped_l.apply(lambda x: x['Group_Key_l'][ : re.search(r'-\d\d\d\d-', x['Group_Key_l']).start()], axis = 1)
-df_grouped_l['Date'] = df_grouped_l.apply(lambda x: x['Group_Key_l'][re.search(r'-\d\d\d\d-', x['Group_Key_l']).start()+1: ], axis = 1)
-
+df_grouped_l.reset_index(inplace=True)
+df_grouped_l['Author'] = df_grouped_l.apply(
+    lambda x: x['Group_Key_l'][: re.search(r'-\d\d\d\d-', x['Group_Key_l']).start()], axis=1)
+df_grouped_l['Date'] = df_grouped_l.apply(
+    lambda x: x['Group_Key_l'][re.search(r'-\d\d\d\d-', x['Group_Key_l']).start() + 1:], axis=1)
 df_grouped_a = df_grouped_l.groupby('Author').agg({'Loc_local_weight': 'sum'})
-
-df_grouped_a.reset_index(inplace = True)
-
-df_grouped_a.apply(lambda x: author_normalization(x['Loc_local_weight'], x['Author']), axis = 1)
-
-author_dict.update((x,(np.sqrt(y))**-1) for x,y in author_dict.items())
+df_grouped_a.reset_index(inplace=True)
+df_grouped_a.apply(lambda x: author_normalization(x['Loc_local_weight'], x['Author']), axis=1)
+author_dict.update((x, (np.sqrt(y)) ** -1) for x, y in author_dict.items())
+print('Author normalization  done')
 
 # Final weighting
 #
 
-df_grouped_l['Final_Weight'] = df_grouped_l.apply(lambda x: final_weight(x['Loc_local_weight'].copy(), x['Author']), axis = 1)
-
-
+df_grouped_l['Final_Weight'] = df_grouped_l.apply(lambda x: final_weight(x['Loc_local_weight'].copy(), x['Author']),
+                                                  axis=1)
 
 df = df_grouped_l[['Group_Key_l', 'Final_Weight', 'Date', 'Author']]
 
