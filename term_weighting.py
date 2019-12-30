@@ -242,9 +242,8 @@ def array(sorted_tokens):
 df['Numbers'] = df.apply(lambda x: array(x['Sorted_Tokens']), axis = 1)
 df = df[['Group_Key_l', 'Numbers']]
 
-
-year_start = parser.getint('Parsing', 'year_start')
-years_end = parser.getint('Parsing', 'year_end') +1
+year_start = parser.getint('Term_Weighting', 'year_start', fallback=2001)
+years_end = parser.getint('Term_Weighting', 'year_end', fallback=2001) + 1
 
 dates = [str(x)+'-'+str(y) for x in range(year_start, years_end) for y in range(1,13)]
 
@@ -277,6 +276,3 @@ np.save('tensor', tensor)
 
 pickle.dump(token_dict, open(email_path + "/Data_Pickle/token_dict.p", "wb"))
 pickle.dump(dates, open(email_path + "/Data_Pickle/dates.p", "wb"))
-
-
-

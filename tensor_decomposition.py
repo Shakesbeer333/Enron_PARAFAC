@@ -15,8 +15,8 @@ cwd = os.getcwd()
 token_list = list(pickle.load(open(email_path + "/Data_Pickle/token_dict.p", 'rb')).keys())
 tensor = np.load('tensor.npy')
 
-rank = 5
-cluster_n = 5
+rank = parser.getint('Decomposition', 'rank', fallback=25)
+cluster_n = parser.getint('Decomposition', 'cluster_n', fallback=10)
 
 weights, factors = parafac(tl.tensor(tensor), rank=rank, normalize_factors=True, non_negative=True)
 
