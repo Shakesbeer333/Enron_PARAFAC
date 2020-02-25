@@ -29,14 +29,17 @@ weights, factors = sparse_parafac(sparse_tensor, rank=rank, init='random', norma
 # Column = Factor
 token_factors = factors[2].todense().T
 time_factors = factors[1].todense().T
+author_factors = factors[0].todense().T
 
 tokens = []
 intensity = []
+author = []
 
 for r in range(rank):
     loadings = token_factors[r][np.argsort(token_factors[r])[-cluster_n:]]
 
     intensity.append(time_factors[r])
+    author.append(author_factors[r])
 
     index = [np.where(token_factors[r] == l) for l in loadings]
     index = [item for sublist in index for item in sublist]
@@ -44,5 +47,6 @@ for r in range(rank):
 
     tokens.append([token_list[i] for i in index])
 
-pickle.dump(tokens, open(email_path + "/Data_Pickle/conv_tokens.p", "wb"))
-pickle.dump(intensity, open(email_path + "/Data_Pickle/conv_intensity.p", "wb"))
+pickle.dump(tokens, open(email_path + f"/Data_Pickle/conv_tokens{rank}.p", "wb"))
+pickle.dump(intensity, open(email_path + f"/Data_Pickle/conv_intensity{rank}.p", "wb"))
+pickle.dump(author, open(email_path + f"/Data_Pickle/author{rank}.p", "wb"))
