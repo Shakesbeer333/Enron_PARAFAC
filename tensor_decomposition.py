@@ -13,6 +13,7 @@ email_path = os.path.join(os.getcwd(), dir_)
 cwd = os.getcwd()
 
 token_list = list(pickle.load(open(email_path + "/Data_Pickle/token_dict.p", 'rb')).keys())
+employee_list = pickle.load(open(email_path + "/Data_Pickle/employee_list.p", 'rb'))
 dense_tensor = np.load('tensor.npy')
 dense_tensor = dense_tensor.astype('float32')
 sparse_tensor = stl.tensor(dense_tensor)
@@ -37,15 +38,18 @@ author = []
 
 for r in range(rank):
     loadings = token_factors[r][np.argsort(token_factors[r])[-cluster_n:]]
-
-    intensity.append(time_factors[r])
-    author.append(author_factors[r])
-
     index = [np.where(token_factors[r] == l) for l in loadings]
     index = [item for sublist in index for item in sublist]
     index = set(item for sublist in index for item in sublist)
-
     tokens.append([token_list[i] for i in index])
+
+    loadings = author_factors[r][np.argsort(author_factors[r])[-cluster_n:]]
+    index = [np.where(author_factors[r] == l) for l in loadings]
+    index = [item for sublist in index for item in sublist]
+    index = set(item for sublist in index for item in sublist)
+    author.append([employee_list[i] for i in index])
+
+    intensity.append(time_factors[r])
 
 pickle.dump(tokens, open(email_path + f"/Data_Pickle/conv_tokens{rank}.p", "wb"))
 pickle.dump(intensity, open(email_path + f"/Data_Pickle/conv_intensity{rank}.p", "wb"))
