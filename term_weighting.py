@@ -8,15 +8,12 @@ from nltk.stem.porter import PorterStemmer
 from configparser import ConfigParser
 import os
 import pandas as pd
-
 pd.set_option('display.max_columns', 10)
 import re
 import numpy as np
 from collections import Counter
 import pickle
-
 import warnings
-
 warnings.filterwarnings("ignore")
 
 parser = ConfigParser()
@@ -36,7 +33,6 @@ lemma = WordNetLemmatizer()
 porter = PorterStemmer()
 
 stop = stopwords.words('english')
-# todo write additional stopwors in txt file
 
 regex = ['-+ Forwarded.*\n.*-+\n',
          '-+Original Message-+.*\nFrom:.*\nSent:.*\nTo:.*\nSubject:.*\n.*\n+',
@@ -60,9 +56,6 @@ regex = ['-+ Forwarded.*\n.*-+\n',
 
 pattern = r'|'.join(regex)
 
-
-
-
 exclude = set(string.punctuation)
 
 str_ = '['
@@ -74,14 +67,9 @@ str_ += ']'
 #############################################################################
 
 def token(text, subject):
+
     text = re.sub(pattern=pattern, repl='', string=text, count=10000, flags=re.IGNORECASE)
     text = re.sub(r'\s*(\d+)\s*', r' \1 ', text, 10000)
-    # subject = re.sub(pattern='\n', repl='', string=subject, count=100)
-    # text = re.sub(pattern='\n', repl='', string=text, count=10000)
-    # text = re.sub(pattern=subject, repl='', string=text, count=100)
-
-    # print(text)
-    # print('-------------NEW MAIL---------------------------------------')
 
     text = text.rstrip().lower().split()
 
@@ -233,23 +221,22 @@ df['Sorted_Tokens'] = df.apply(lambda x: sorted(x['Final_Weight'].copy().items()
 
 
 def array(sorted_tokens):
-
     sorted_tokens = [x[1] for x in sorted_tokens]
 
     return sorted_tokens
 
 
-df['Numbers'] = df.apply(lambda x: array(x['Sorted_Tokens']), axis = 1)
+df['Numbers'] = df.apply(lambda x: array(x['Sorted_Tokens']), axis=1)
 df = df[['Group_Key_l', 'Numbers']]
 
 year_start = parser.getint('Term_Weighting', 'year_start', fallback=2001)
 years_end = parser.getint('Term_Weighting', 'year_end', fallback=2001) + 1
 
-dates = [str(x)+'-'+str(y) for x in range(year_start, years_end) for y in range(1,13)]
+dates = [str(x) + '-' + str(y) for x in range(year_start, years_end) for y in range(1, 13)]
 
-keys = [x+'-'+y for x in author_list for y in dates]
+keys = [x + '-' + y for x in author_list for y in dates]
 
-null_ = [0]*len(token_dict)
+null_ = [0] * len(token_dict)
 for x in keys:
     if x not in df['Group_Key_l'].values:
         df.at[x, 'Numbers'] = null_

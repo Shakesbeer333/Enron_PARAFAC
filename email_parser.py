@@ -108,3 +108,4 @@ for index, p in enumerate(email_list):
 df.reset_index(drop = True, inplace = True)
 
 pickle.dump(df, open(email_path + "/Data_Pickle/e_mails.p", "wb"))
+pickle.dump(employee_list, open(email_path + "/Data_Pickle/employee_list.p", "wb"))
