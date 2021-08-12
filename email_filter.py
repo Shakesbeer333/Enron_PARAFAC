@@ -6,7 +6,9 @@ from dateutil import parser as d_parser
 from email.parser import Parser
 from configparser import ConfigParser
 
-with open(file=os.path.join(os.getcwd(), 'employees.txt'), encoding='utf-8', mode="r") as f:
+with open(file=os.path.join(os.getcwd(), 'employees.txt'), 
+          encoding='utf-8', 
+          mode="r") as f:
     employee_txt = f.readlines()
 
 employee_list = []
@@ -40,7 +42,6 @@ for r, d, f in os.walk(email_path):
 for index, p in enumerate(email_list):
 
     with open(p, 'r', encoding='UTF-8', errors='ignore') as f:
-
         data = f.read()
 
     email = Parser().parsestr(data)
