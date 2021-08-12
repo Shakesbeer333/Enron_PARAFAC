@@ -7,7 +7,9 @@ from dateutil import parser as d_parser
 from email.parser import Parser
 from configparser import ConfigParser
 
-with open(file=os.path.join(os.getcwd(), 'employees.txt'), encoding='utf-8', mode="r") as f:
+with open(file=os.path.join(os.getcwd(), 'employees.txt'), 
+          encoding='utf-8', 
+          mode="r") as f:
     employee_txt = f.readlines()
 
 employee_list = []
@@ -61,21 +63,16 @@ for index, p in enumerate(email_list):
     user_name_start = re.search('@', user_email)
 
     if user_name_start:
-
         user_name = user_email[0: user_name_start.start()]
 
         # Only consider important employees
         if user_name in employee_list:
-
             df.at[index, "From"] = user_name
-
         else:
 
             df.drop([index], inplace=True)
             continue
-
     else:
-
         print('No valid E-Mail: ', user_email)
         df.drop([index], inplace=True)
         continue
@@ -107,5 +104,9 @@ for index, p in enumerate(email_list):
 # df.dropna(axis = 0, inplace = True)
 df.reset_index(drop = True, inplace = True)
 
-pickle.dump(df, open(email_path + "/Data_Pickle/e_mails.p", "wb"))
-pickle.dump(employee_list, open(email_path + "/Data_Pickle/employee_list.p", "wb"))
+pickle.dump(df, 
+            open(email_path + "/Data_Pickle/e_mails.p", "wb")
+           )
+pickle.dump(employee_list, 
+            open(email_path + "/Data_Pickle/employee_list.p", "wb")
+            )
